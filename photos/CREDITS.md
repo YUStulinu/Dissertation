@@ -3,6 +3,12 @@
 Sources and licences of the photographs used in Module 2. All of them allow reuse in academic work;
 CC BY / CC BY-SA images must be credited as below.
 
+## Open-access photographs (open_access/)
+
+`open_access/` holds the photographs taken from the internet: the objects from The Met's Open Access
+collection and the halls and the town square from Wikimedia Commons. The author's own portrait,
+`poza_CV.jpg`, stays in `photos/`.
+
 | File | What | Author / source | Licence |
 | --- | --- | --- | --- |
 | amphora_black_figure.jpg | Terracotta amphora (jar), ca. 510 BCE, H. 51.1 cm | Rycroft Painter; The Metropolitan Museum of Art, [object 247236](https://www.metmuseum.org/art/collection/search/247236) | CC0 (Met Open Access) |

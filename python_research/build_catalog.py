@@ -8,7 +8,7 @@ most 1600 px, 2400 px for the largest objects - held close to a Full HD camera t
 ~1800 px tall - and 4000 px for the swords, ~3500 px wide across the palms). The live demo then only
 resizes and composites these cut-outs.
 
-catalog.json gives, per object, the photo (in photos/), its real height in metres - the one thing
+catalog.json gives, per object, the photo (in photos/open_access/), its real height in metres - the one thing
 the photo cannot tell - and optionally "class": the YOLO (COCO) class to prefer (default "vase";
 another class is used if YOLO finds no vase, and an object YOLO is not sure of at all - a statue,
 a helmet, a mask - is cut out by SAM from the largest of its weak detections), and "box":

@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent  # .../python_research
 MODELS_DIR = ROOT / "models"
 DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
-IMAGES_DIR = ROOT.parent / "photos"
+IMAGES_DIR = ROOT.parent / "photos" / "open_access"  # the Met objects, the halls (Wikimedia Commons)
 SCREENSHOTS_DIR = ROOT.parent / "images" / "python_app"  # the S key of the live demos (the C++ app: qt_cpp_app/)
 
 

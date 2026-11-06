@@ -22,7 +22,6 @@ import argparse
 import time
 from pathlib import Path
 
-import cv2
 import numpy as np
 
 from common.composition import add_reflection, add_shadow, dilate, inpaint, place
@@ -32,7 +31,7 @@ from common.paths import DATA_DIR, IMAGES_DIR
 from common.scene import depth_map, floor_foreshortening
 from common.segmentation import extract_foreground
 
-PHOTOS_DIR = IMAGES_DIR / "museum_oltenia"
+PHOTOS_DIR = IMAGES_DIR.parent / "museum_oltenia"
 COLLECTION_DIR = DATA_DIR / "museum_oltenia"
 MASKS_DIR = COLLECTION_DIR / "masks"
 OUT_DIR = COLLECTION_DIR / "harmonized"
