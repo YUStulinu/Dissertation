@@ -50,6 +50,8 @@ collection and the halls and the town square from Wikimedia Commons. The author'
 
 Images were downscaled to at most 1600 px - the large objects (the two large amphorae, the shields, the breastplate, the shaffrons, the armor) and the long weapons held in one hand, which the live demo draws up to ~1800-2300 px tall when they are held close to the camera, to at most 2400 px; the three swords, which lie across both palms up to ~3500 px wide, keep the original 4000 px. No other edits: the swords and the dagger are turned in their cut-outs, not in the photos.
 
+`open_access/views/<object>_<k>.jpg` are further photographs of 18 of these Met objects, taken from other angles: photo k of the same object's Open Access record (CC0), at most as large as the object's main photo. The live demo turns the objects through them (`python_research/met_views.py`).
+
 ## Muzeul Olteniei Craiova (museum_oltenia/)
 
 `museum_oltenia/<object>/` holds 8,744 photographs of 83 objects of the **Muzeul Olteniei Craiova** (Oltenia Museum, Craiova, Romania), from the photo database of the museum's GAME project, provided by the dissertation advisor for this work. The objects were photographed on a turntable (a white cylinder on a white backdrop, or a black disc in the museum's laboratory) with a Samsung Galaxy S24 Ultra. The rights belong to the museum: these photographs are **not** under an open licence; ask the Muzeul Olteniei before any reuse outside this dissertation.

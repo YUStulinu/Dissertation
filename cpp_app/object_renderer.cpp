@@ -232,23 +232,60 @@ float ObjectRenderer::cameraNoise(const cv::Mat& frame)
 
 const cv::Mat* ObjectRenderer::texture(const std::string& name)
 {
-    // a turning object's view (views/...) is read when first drawn - its colours are bled already
-    // (live_views.py) - and only the latest VIEW_KEEP are kept, as handheld._Views
+    // a turning object's view (views/...) is read in a thread when its object first comes up (prefetch) -
+    // its colours are bled already (live_views.py, met_views.py) - and the views drawn longest ago are
+    // forgotten beyond VIEW_BYTES, as handheld._Views; until it is read, nullptr (the object's own cut-out
+    // is drawn instead)
     const bool view = name.rfind("views/", 0) == 0;
     auto it = textures_.find(name);
     if (it == textures_.end()) {
-        const cv::Mat sprite = cv::imread(dir_ + "/" + name + ".png", cv::IMREAD_UNCHANGED);
-        it = textures_.emplace(name, sprite.channels() != 4 ? cv::Mat() : view ? sprite : bleed(sprite)).first;
-        if (view && viewUse_.size() >= VIEW_KEEP) {  // forget the view drawn longest ago
-            const auto oldest = std::min_element(viewUse_.begin(), viewUse_.end(),
-                                                 [](const auto& a, const auto& b) { return a.second < b.second; });
-            textures_.erase(oldest->first);
-            spans_.erase(oldest->first);
-            viewUse_.erase(oldest);
+        if (!view) {
+            const cv::Mat sprite = cv::imread(dir_ + "/" + name + ".png", cv::IMREAD_UNCHANGED);
+            it = textures_.emplace(name, sprite.channels() != 4 ? cv::Mat() : bleed(sprite)).first;
+        } else {
+            auto loading = loading_.find(name);
+            if (loading == loading_.end()) {
+                const std::string path = dir_ + "/" + name + ".png";
+                loading = loading_.emplace(name, std::async(std::launch::async, [path] {
+                    return cv::imread(path, cv::IMREAD_UNCHANGED); }).share()).first;
+            }
+            if (loading->second.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return nullptr;
+            const cv::Mat sprite = loading->second.get();
+            loading_.erase(loading);
+            it = textures_.emplace(name, sprite.channels() != 4 ? cv::Mat() : sprite).first;
+            viewBytes_ += it->second.total() * it->second.elemSize();
+            while (viewBytes_ > VIEW_BYTES && !viewUse_.empty()) {  // forget the view drawn longest ago
+                const auto oldest = std::min_element(viewUse_.begin(), viewUse_.end(),
+                                                     [](const auto& a, const auto& b) { return a.second < b.second; });
+                if (oldest->second == frame_) break;  // all drawn in this frame
+                const auto gone = textures_.find(oldest->first);
+                viewBytes_ -= gone->second.total() * gone->second.elemSize();
+                textures_.erase(gone);
+                spans_.erase(oldest->first);
+                viewUse_.erase(oldest);
+            }
         }
     }
     if (view) viewUse_[name] = frame_;
     return it->second.empty() ? nullptr : &it->second;
+}
+
+void ObjectRenderer::prefetch(const std::string& object)
+{
+    auto files = viewFiles_.find(object);
+    if (files == viewFiles_.end()) {  // its views, listed once
+        std::vector<std::string> names;
+        const QString folder = QString::fromStdString(dir_ + "/views/" + object);
+        for (const QString& file : QDir(folder).entryList({"*.png"}, QDir::Files, QDir::Name))
+            names.push_back("views/" + object + "/" + QFileInfo(file).completeBaseName().toStdString());
+        files = viewFiles_.emplace(object, std::move(names)).first;
+    }
+    for (const std::string& name : files->second)
+        if (!textures_.count(name) && !loading_.count(name)) {
+            const std::string path = dir_ + "/" + name + ".png";
+            loading_.emplace(name, std::async(std::launch::async, [path] {
+                return cv::imread(path, cv::IMREAD_UNCHANGED); }).share());
+        }
 }
 
 const cv::Mat& ObjectRenderer::styled(const HeldObject& object, const cv::Mat& texture, double px)
@@ -394,10 +431,17 @@ void ObjectRenderer::draw(cv::Mat& frame, const std::vector<HeldObject>& objects
                     if (const cv::Rect box = handBox(hand, cv::Rect(objects[i].topLeft, objects[i].size) & inFrame, soft); !box.empty())
                         patches[i].push_back({&hand, box, frame(box).clone()});
     for (size_t i = 0; i < objects.size(); ++i) {
-        const HeldObject& o = objects[i];
-        if (o.opacity <= 0.0f || o.size.area() <= 0) continue;
-        const cv::Mat* tex = texture(o.sprite);
+        if (objects[i].opacity <= 0.0f || objects[i].size.area() <= 0) continue;
+        prefetch(objects[i].name);  // a turning object's views, read while it is shown
+        HeldObject own;  // a view not read yet: the object's own cut-out meanwhile (cached under its own name)
+        const cv::Mat* tex = texture(objects[i].sprite);
+        if (!tex && objects[i].sprite != objects[i].name) {
+            own = objects[i];
+            own.sprite = own.name;
+            tex = texture(own.sprite);
+        }
         if (!tex) continue;
+        const HeldObject& o = own.sprite.empty() ? objects[i] : own;
         const bool harmonized = harmonize && !o.raw && o.hasFit;
         const bool shadowed = o.shadow;  // standing on the palm (not a sword lying across two)
         cv::Rect area(o.topLeft, o.size);

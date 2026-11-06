@@ -52,6 +52,7 @@ a sword, lying, ~3600 px long).
 The Muzeul Olteniei objects (collection_selection/live_views.py, data/objects/oltenia.json) were
 photographed all around on a turntable: each turns slowly in the hand, back and forth through
 up to 12 views of one turn (VIEW_S per view), read from disk in a thread when the object comes up.
+The Met objects photographed from several sides (met_views.py) turn through those photos the same way.
   occlusion      the hands stay in front of an object held at its belly or handles
   shadow         a soft contact shadow on the palm under an object standing on it
 """
@@ -104,8 +105,9 @@ REST = 1 - WEIGHT
 THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")  # math libraries' thread pools
 ENSEMBLE = ("harmonizer", "pctnet", "pctnet_cnn")
 COLLECTION_PATH = CATALOG_DIR / "oltenia.json"  # the Muzeul Olteniei objects (collection_selection/live_views.py)
+MET_VIEWS_PATH = CATALOG_DIR / "met_views.json"  # the Met objects' other sides (met_views.py)
 VIEW_S = 0.25                      # an object photographed all around: seconds per view as it turns
-VIEW_KEEP = 240                    # views kept in memory (~20 objects' worth, ~1 MB each)
+VIEW_BYTES = 600 << 20             # views kept in memory (the latest read; ~20-40 objects' worth)
 
 
 # ── Object library ────────────────────────────────────────────────────────
@@ -180,6 +182,7 @@ def load_catalog(collection: bool = True) -> list[Artefact]:
     first. One given by its width ("width_m": a sword lying lengthwise) gets the height that width makes
     in its cut-out."""
     arts = []
+    other_sides = json.loads(MET_VIEWS_PATH.read_text(encoding="utf-8")) if collection and MET_VIEWS_PATH.exists() else {}
     for e in catalog_entries() + (collection_entries() if collection else []):
         path = sprite_path(e)
         if path.exists():
@@ -187,7 +190,7 @@ def load_catalog(collection: bool = True) -> list[Artefact]:
             height = e["height_m"] if "height_m" in e else e["width_m"] * sprite.shape[0] / sprite.shape[1]
             arts.append(Artefact(path.stem, height, sprite, e.get("handles"), e.get("hands"),
                                  e.get("size_m", e.get("height_m", e.get("width_m"))), "height_m" not in e,
-                                 tuple(e.get("views", ())), bool(e.get("approx_size"))))
+                                 tuple(e.get("views") or other_sides.get(path.stem, ())), bool(e.get("approx_size"))))
     if not arts:
         raise FileNotFoundError(f"No object cut-outs in {CATALOG_DIR}: run python build_catalog.py first.")
     return sorted(arts, key=lambda a: a.height_m)
@@ -372,19 +375,21 @@ class Layer:
 class _Views:
     """The turning objects' views: read from disk when their object first needs them - live in a
     thread, so that no frame waits (until then the object shows its first view), for video files and
-    stills at once, so that every run is the same - and the latest VIEW_KEEP kept."""
+    stills at once, so that every run is the same - and the latest VIEW_BYTES of them kept."""
 
     def __init__(self, sync: bool):
-        self.sync, self.kept, self.asked, self.lock = sync, OrderedDict(), set(), threading.Lock()
+        self.sync, self.kept, self.asked, self.lock, self.bytes = sync, OrderedDict(), set(), threading.Lock(), 0
         self.pool = None if sync else ThreadPoolExecutor(2)
 
     def _read(self, name: str) -> np.ndarray:
         image = cv2.imread(str(CATALOG_DIR / f"{name}.png"), cv2.IMREAD_UNCHANGED)
         with self.lock:
-            self.kept[name] = image
+            if name not in self.kept:
+                self.kept[name] = image
+                self.bytes += image.nbytes
             self.asked.discard(name)
-            while len(self.kept) > VIEW_KEEP:
-                self.kept.popitem(last=False)
+            while self.bytes > VIEW_BYTES and len(self.kept) > 1:
+                self.bytes -= self.kept.popitem(last=False)[1].nbytes
         return image
 
     def get(self, art: Artefact, name: str) -> np.ndarray | None:
@@ -396,7 +401,7 @@ class _Views:
         if self.sync:
             return self._read(name)
         with self.lock:  # all the views of that object not read yet, in the background
-            todo = [v for v in art.views[1:] if v not in self.kept and v not in self.asked]
+            todo = [v for v in dict.fromkeys(art.views[1:]) if v != art.name and v not in self.kept and v not in self.asked]
             self.asked.update(todo)
         for v in todo:
             self.pool.submit(self._read, v)
@@ -611,8 +616,12 @@ class HandheldScene:
                 mode, row, width = "palm", 1.0, 0.0
             fit = float(np.clip(tr.gap_m / width, *FIT_RANGE)) if several and width else 1.0
             key, texture = self._view(tr)
-            h = max(8, round(art.height_m * tr.px_per_m * fit * scale))
-            w = max(1, round(texture.shape[1] * h / texture.shape[0]))
+            if art.lengthwise and art.views:  # lying, turning: its length stays, its thickness is the view's
+                w = max(8, round(art.size_m * tr.px_per_m * fit * scale))
+                h = max(1, round(texture.shape[0] * w / texture.shape[1]))
+            else:
+                h = max(8, round(art.height_m * tr.px_per_m * fit * scale))
+                w = max(1, round(texture.shape[1] * h / texture.shape[0]))
             x, y = tr.centre[0] * scale - w / 2, tr.centre[1] * scale - row * h  # that row at the hands
             out.append(Layer(tr, w, h, round(x), round(y), mode, scale, key, texture))
         return out
@@ -627,7 +636,7 @@ class HandheldScene:
         n = len(art.views)
         step = int(max(0.0, self.now - tr.changed) / VIEW_S) % (2 * n - 2)
         k = step if step < n else 2 * n - 2 - step
-        texture = self.views.get(art, art.views[k]) if k else None
+        texture = self.views.get(art, art.views[k]) if k and art.views[k] != art.name else None  # else: the main one
         return (art.views[k], texture) if texture is not None else (art.name, art.texture)
 
     def refresh_harmony(self, frame: np.ndarray) -> None:

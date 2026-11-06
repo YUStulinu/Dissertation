@@ -34,7 +34,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 from common.handheld import CATALOG_DIR, _bleed  # noqa: E402
-from common.imaging import read_image, read_mask, write_image  # noqa: E402
+from common.imaging import read_image, read_mask  # noqa: E402
 from common.paths import DATA_DIR, IMAGES_DIR  # noqa: E402
 
 COLLECTION = DATA_DIR / "museum_oltenia"
@@ -129,7 +129,8 @@ def make_view(job: tuple[str, str]) -> tuple[int, int]:
         pm = cv2.resize(pm, size, interpolation=cv2.INTER_AREA)
         pm[..., :3] /= np.maximum(pm[..., 3:] / 255, 1e-3)
         sprite = np.clip(np.rint(pm), 0, 255).astype(np.uint8)
-    write_image(Path(out), _bleed(sprite))
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(out, _bleed(sprite), [cv2.IMWRITE_PNG_COMPRESSION, 9])  # smallest lossless PNG
     return sprite.shape[1], sprite.shape[0]
 
 

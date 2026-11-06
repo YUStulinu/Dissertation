@@ -2,6 +2,7 @@
 
 #include <QJsonArray>
 #include <QString>
+#include <future>
 #include <map>
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -88,8 +89,9 @@ private:
     };
     enum Work { DRAWN, ALPHA, COLOURS, WEIGHT, REST, OPAQUE_WEIGHT, OPAQUE_REST, GRAINED, BLURRED, WORK_COUNT };
 
-    static constexpr size_t VIEW_KEEP = 240;      // views of turning objects kept in memory (as handheld.py)
-    const cv::Mat* texture(const std::string& name);  // the bled cut-out (8-bit BGRA), nullptr if missing
+    static constexpr size_t VIEW_BYTES = size_t(600) << 20;  // views of turning objects kept in memory (as handheld.py)
+    const cv::Mat* texture(const std::string& name);  // the bled cut-out (8-bit BGRA), nullptr if missing or still being read
+    void prefetch(const std::string& object);         // its views (views/<object>/*.png), read in threads
     const cv::Mat& styled(const HeldObject& object, const cv::Mat& texture, double px);  // px 0: not sharpened
     Part part(const HeldObject& object, const cv::Mat& texture, const cv::Rect& visible, bool harmonized);
     const cv::Mat& shadow(const HeldObject& object, const cv::Mat& texture, cv::Point& at);
@@ -100,6 +102,9 @@ private:
     std::map<std::string, cv::Mat>               textures_;  // per name (empty if missing)
     std::map<std::string, double>                spans_;     // per name: the width of the base, cut-out pixels
     std::map<std::string, unsigned long long>    viewUse_;   // per view read: the last frame drawing it
+    std::map<std::string, std::shared_future<cv::Mat>> loading_;  // per view: being read
+    std::map<std::string, std::vector<std::string>> viewFiles_;  // per object: its views (empty: none)
+    size_t                                        viewBytes_ = 0;
     unsigned long long                            frame_ = 0; // frames drawn
     std::map<int, Styled>                         styled_;    // per object id: its re-coloured cut-out
     std::map<int, Kept>                           sprites_;   // per object id: the whole object at its size
