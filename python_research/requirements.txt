@@ -22,6 +22,7 @@ spandrel               # Real-ESRGAN super-resolution of enlarged cut-outs
 transformers           # Depth Anything V2 metric depth; CLIP text encoder of IC-Light
 diffusers              # IC-Light relighting (Stable Diffusion 1.5, --harmony iclight)
 safetensors
+omegaconf              # third_party/TripoSR: the Met objects photographed once, reconstructed in 3D (reconstruct_3d.py)
 
 # Optional - Intrinsic Harmonization (--harmony intrinsic / reshade; academic-use licence):
 #   python -m pip install "setuptools<81" wheel

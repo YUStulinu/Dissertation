@@ -52,6 +52,8 @@ Images were downscaled to at most 1600 px - the large objects (the two large amp
 
 `open_access/views/<object>_<k>.jpg` are further photographs of 18 of these Met objects, taken from other angles: photo k of the same object's Open Access record (CC0), at most as large as the object's main photo. The live demo turns the objects through them (`python_research/met_views.py`).
 
+Ten Met objects photographed only once turn in the live demo through a 3D reconstruction made by TripoSR from their main photo (`python_research/reconstruct_3d.py`): those views are generated, not photographs - the object's back is the model's guess.
+
 ## Muzeul Olteniei Craiova (museum_oltenia/)
 
 `museum_oltenia/<object>/` holds 8,744 photographs of 83 objects of the **Muzeul Olteniei Craiova** (Oltenia Museum, Craiova, Romania), from the photo database of the museum's GAME project, provided by the dissertation advisor for this work. The objects were photographed on a turntable (a white cylinder on a white backdrop, or a black disc in the museum's laboratory) with a Samsung Galaxy S24 Ultra. The rights belong to the museum: these photographs are **not** under an open licence; ask the Muzeul Olteniei before any reuse outside this dissertation.

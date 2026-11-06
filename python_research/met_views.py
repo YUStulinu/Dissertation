@@ -90,15 +90,15 @@ def premultiplied(sprite: np.ndarray, size: tuple[int, int]) -> np.ndarray:
     return cv2.resize(pm, size, interpolation=cv2.INTER_AREA if size[1] < sprite.shape[0] else cv2.INTER_LINEAR)
 
 
-def on_canvas(views: list[np.ndarray], lengthwise: bool) -> tuple[list[np.ndarray], tuple[int, int]]:
+def on_canvas(views: list[np.ndarray], lengthwise: bool, view_px: int = VIEW_PX) -> tuple[list[np.ndarray], tuple[int, int]]:
     """The views at one size (the first's height, or its width for an object lying lengthwise, at most
-    VIEW_PX) on one canvas as wide and tall as the largest: premultiplied float BGRA."""
+    view_px) on one canvas as wide and tall as the largest: premultiplied float BGRA."""
     first = views[0]
     if lengthwise:  # the same length
-        length = min(first.shape[1], round(VIEW_PX * first.shape[1] / max(first.shape[:2])))
+        length = min(first.shape[1], round(view_px * first.shape[1] / max(first.shape[:2])))
         sizes = [(length, max(1, round(v.shape[0] * length / v.shape[1]))) for v in views]
     else:  # the same height
-        height = min(first.shape[0], VIEW_PX)
+        height = min(first.shape[0], view_px)
         sizes = [(max(1, round(v.shape[1] * height / v.shape[0])), height) for v in views]
     w, h = max(s[0] for s in sizes), max(s[1] for s in sizes)
     canvases = []

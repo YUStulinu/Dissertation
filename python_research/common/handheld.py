@@ -52,7 +52,8 @@ a sword, lying, ~3600 px long).
 The Muzeul Olteniei objects (collection_selection/live_views.py, data/objects/oltenia.json) were
 photographed all around on a turntable: each turns slowly in the hand, back and forth through
 up to 12 views of one turn (VIEW_S per view), read from disk in a thread when the object comes up.
-The Met objects photographed from several sides (met_views.py) turn through those photos the same way.
+The Met objects photographed from several sides (met_views.py) turn through those photos the same way, those
+photographed once through a 3D reconstruction of them (reconstruct_3d.py).
   occlusion      the hands stay in front of an object held at its belly or handles
   shadow         a soft contact shadow on the palm under an object standing on it
 """
@@ -106,6 +107,7 @@ THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")  # 
 ENSEMBLE = ("harmonizer", "pctnet", "pctnet_cnn")
 COLLECTION_PATH = CATALOG_DIR / "oltenia.json"  # the Muzeul Olteniei objects (collection_selection/live_views.py)
 MET_VIEWS_PATH = CATALOG_DIR / "met_views.json"  # the Met objects' other sides (met_views.py)
+AI_VIEWS_PATH = CATALOG_DIR / "ai_views.json"  # the Met objects photographed once, reconstructed in 3D (reconstruct_3d.py)
 VIEW_S = 0.25                      # an object photographed all around: seconds per view as it turns
 VIEW_BYTES = 600 << 20             # views kept in memory (the latest read; ~20-40 objects' worth)
 
@@ -182,7 +184,9 @@ def load_catalog(collection: bool = True) -> list[Artefact]:
     first. One given by its width ("width_m": a sword lying lengthwise) gets the height that width makes
     in its cut-out."""
     arts = []
-    other_sides = json.loads(MET_VIEWS_PATH.read_text(encoding="utf-8")) if collection and MET_VIEWS_PATH.exists() else {}
+    other_sides = {}
+    for path in (MET_VIEWS_PATH, AI_VIEWS_PATH) if collection else ():
+        other_sides |= json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     for e in catalog_entries() + (collection_entries() if collection else []):
         path = sprite_path(e)
         if path.exists():

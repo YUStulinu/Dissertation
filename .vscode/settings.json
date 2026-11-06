@@ -9,5 +9,6 @@
   "C_Cpp.errorSquiggles": "enabled",
   "python.defaultInterpreterPath": "${workspaceFolder}/python_research/venv/Scripts/python.exe",
   "python.terminal.activateEnvironment": true,
-  "python.analysis.extraPaths": ["${workspaceFolder}/python_research"]
+  "python.analysis.extraPaths": ["${workspaceFolder}/python_research"],
+  "r.lsp.promptToInstall": false
 }

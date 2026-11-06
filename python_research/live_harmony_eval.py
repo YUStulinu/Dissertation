@@ -85,7 +85,7 @@ def benchmark(shares: list[float]) -> dict:
 def vases(shares: list[float]) -> dict:
     changes = {s: [] for s in shares}
     for scene in SCENES:
-        for art in load_catalog(collection=False):
+        for art in [a for a in load_catalog(collection=False) if a.name.startswith(("amphora", "jar"))]:  # the vases
             composite, _, inside, outputs = vase_scene(scene, art)
             before = lab(composite)[inside]
             chroma = np.hypot(before[:, 1], before[:, 2])
