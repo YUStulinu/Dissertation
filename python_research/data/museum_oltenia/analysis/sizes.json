@@ -1,0 +1,227 @@
+{
+ "altar_small_I8313": {
+  "height_m": 0.047,
+  "n": 66,
+  "turntable": "white"
+ },
+ "amphora_I44639": {
+  "height_m": 0.178,
+  "n": 24,
+  "turntable": "white"
+ },
+ "axe_bronze_I25114": {
+  "length_m": 0.139,
+  "n": 14,
+  "turntable": "white"
+ },
+ "axe_flat_bronze_I25138": {
+  "length_m": 0.105,
+  "n": 47,
+  "turntable": "white"
+ },
+ "axe_stone_perforated_I25675": {
+  "length_m": 0.107,
+  "n": 35,
+  "turntable": "white"
+ },
+ "bowl_I29667": {
+  "height_m": 0.073,
+  "n": 15,
+  "turntable": "white+black"
+ },
+ "bracelet_bronze_I56436": {
+  "length_m": 0.081,
+  "n": 34,
+  "turntable": "white"
+ },
+ "bracelet_spiral_55812": {
+  "length_m": 0.061,
+  "n": 8,
+  "turntable": "white"
+ },
+ "cup_I56404": {
+  "height_m": 0.097,
+  "n": 15,
+  "turntable": "white"
+ },
+ "cup_I56494": {
+  "height_m": 0.042,
+  "n": 7,
+  "turntable": "white"
+ },
+ "cup_I56873": {
+  "height_m": 0.066,
+  "n": 5,
+  "turntable": "white"
+ },
+ "idol_I4583": {
+  "height_m": 0.049,
+  "n": 27,
+  "turntable": "white+black"
+ },
+ "idol_bull_I26022": {
+  "height_m": 0.078,
+  "n": 11,
+  "turntable": "white"
+ },
+ "jar_handled_I51410": {
+  "height_m": 0.113,
+  "n": 9,
+  "turntable": "black"
+ },
+ "jug_I30450": {
+  "height_m": 0.106,
+  "n": 5,
+  "turntable": "black"
+ },
+ "jug_I44644": {
+  "height_m": 0.103,
+  "n": 5,
+  "turntable": "black"
+ },
+ "jug_I7879": {
+  "height_m": 0.086,
+  "n": 22,
+  "turntable": "black+white"
+ },
+ "jug_I8276": {
+  "height_m": 0.076,
+  "n": 6,
+  "turntable": "white"
+ },
+ "jug_M_CXII_431": {
+  "height_m": 0.101,
+  "n": 17,
+  "turntable": "black+white"
+ },
+ "knife_56394": {
+  "length_m": 0.106,
+  "n": 27,
+  "turntable": "white"
+ },
+ "knife_curved_56395": {
+  "length_m": 0.102,
+  "n": 16,
+  "turntable": "white"
+ },
+ "loom_weight_I7806": {
+  "height_m": 0.047,
+  "n": 11,
+  "turntable": "white"
+ },
+ "mould_axe_bivalve_I54478": {
+  "length_m": 0.121,
+  "n": 13,
+  "turntable": "white"
+ },
+ "mould_axe_stone_I25743": {
+  "length_m": 0.071,
+  "n": 18,
+  "turntable": "white"
+ },
+ "mug_I47602": {
+  "height_m": 0.1,
+  "n": 17,
+  "turntable": "black+white"
+ },
+ "nail_iron_I44667": {
+  "length_m": 0.083,
+  "n": 32,
+  "turntable": "white"
+ },
+ "oven_model_I8285": {
+  "height_m": 0.089,
+  "n": 6,
+  "turntable": "black"
+ },
+ "pilum_butt_56378": {
+  "length_m": 0.111,
+  "n": 33,
+  "turntable": "white"
+ },
+ "pot_18298": {
+  "height_m": 0.095,
+  "n": 8,
+  "turntable": "white"
+ },
+ "pot_I56504": {
+  "height_m": 0.063,
+  "n": 5,
+  "turntable": "white"
+ },
+ "pot_I8124": {
+  "height_m": 0.067,
+  "n": 10,
+  "turntable": "white"
+ },
+ "pot_M_CXII_432": {
+  "height_m": 0.062,
+  "n": 16,
+  "turntable": "white+black"
+ },
+ "spearhead_I56422": {
+  "length_m": 0.101,
+  "n": 45,
+  "turntable": "white"
+ },
+ "spearhead_iron_I40220": {
+  "length_m": 0.248,
+  "n": 5,
+  "turntable": "white"
+ },
+ "spearhead_iron_I42460": {
+  "length_m": 0.136,
+  "n": 6,
+  "turntable": "white"
+ },
+ "statuette_bronze_I6138": {
+  "length_m": 0.131,
+  "n": 36,
+  "turntable": "white"
+ },
+ "strainer_I7769": {
+  "height_m": 0.051,
+  "n": 10,
+  "turntable": "white"
+ },
+ "sword_fragment_iron_I44704": {
+  "length_m": 0.148,
+  "n": 6,
+  "turntable": "white"
+ },
+ "vessel_I55830": {
+  "height_m": 0.108,
+  "n": 62,
+  "turntable": "white"
+ },
+ "vessel_I56482": {
+  "height_m": 0.16,
+  "n": 8,
+  "turntable": "white"
+ },
+ "vessel_I8081": {
+  "height_m": 0.121,
+  "n": 18,
+  "turntable": "black+white"
+ },
+ "vessel_handled_I8224": {
+  "height_m": 0.072,
+  "n": 24,
+  "turntable": "white+black"
+ },
+ "vessel_incised_002": {
+  "height_m": 0.099,
+  "n": 39,
+  "turntable": "white"
+ },
+ "vessel_incised_III6415": {
+  "height_m": 0.076,
+  "n": 55,
+  "turntable": "white"
+ },
+ "vessel_small_I8188": {
+  "height_m": 0.025,
+  "n": 9,
+  "turntable": "white"
+ }
+}

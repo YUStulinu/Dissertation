@@ -6,10 +6,12 @@ __pycache__/
 # C++ build output
 build/
 
-# Weights downloaded on first use (YOLOv8, SAM 2.1, Real-ESRGAN)
+# Weights downloaded on first use (YOLOv8, SAM 2.1, Real-ESRGAN, YOLOE + MobileCLIP)
 python_research/models/yolov8*-seg.pt
 python_research/models/sam2.1_b.pt
 python_research/models/RealESRGAN_x4plus.pth
+python_research/models/yoloe-11l-seg.pt
+python_research/models/mobileclip_blt.ts
 
 # Recordings of the live demo (python_research/demo.mp4: 250 MB, over GitHub's 100 MB limit per file;
 # its frames are in images/python_app/demo/)

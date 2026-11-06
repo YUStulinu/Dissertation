@@ -18,6 +18,10 @@ python_research/         research, training and evaluation code (Python)
   data/benchmark_photos/ the real photos used by the harmonization benchmark
   data/objects/          the object library of the interactive demo: catalog.json
                          (the photo and real size of every object) + the RGBA cut-outs
+  data/museum_oltenia/   the Muzeul Olteniei collection: masks, photos.csv (each photo's original),
+                         objects.csv (the objects and their estimated sizes), the museum's tables,
+                         the analysis' measurements, harmonizations in the halls, contact sheets
+  collection_selection/  analysis, selection and copying of the Muzeul Olteniei photos
   data/*_results/        the generated figures and CSV tables
   models/                the trained LSTM action classifier (.pt / .onnx) and the MediaPipe Pose (lite)
                          and Hand Landmarker models; YOLOv8, SAM 2.1 and Real-ESRGAN download here on first use
@@ -27,7 +31,8 @@ cpp_app/                 the live Qt 6 / C++ app: action recognition (ONNX Runti
                          museum objects in hands
 photos/                  the photos of Module 2: vases, weapons, armour, helmets, shields and other objects
                          from The Met Open Access collection (CC0), museum halls and a town square from
-                         Wikimedia Commons; CREDITS.md lists the author and licence of every image
+                         Wikimedia Commons; CREDITS.md lists the author and licence of every image;
+                         museum_oltenia/: photographs of the Muzeul Olteniei's 83 objects
 images/                  app screenshots: python_app/ (the Python demos; python_app/demo/: frames from the
                          recording of the objects-in-hands demo, the gallery in results.html) and
                          qt_cpp_app/ (the Qt/C++ app); the S key in the apps saves straight into these folders
@@ -207,6 +212,7 @@ Inpainting is evaluated by moving the object's mask to an object-free area of th
 | ---------------------------------------- | --------------------------------------- | --------------------------------- |
 | YOLOv8-seg (Ultralytics)                 | detection and the coarse mask           | AGPL-3.0                          |
 | SAM 2.1 (Meta)                           | the precise mask                        | Apache-2.0                        |
+| YOLOE-11L-seg + MobileCLIP (Ultralytics) | detection by text (Oltenia collection)  | AGPL-3.0                          |
 | LaMa                                     | inpainting                              | Apache-2.0                        |
 | Depth Anything V2 Metric Small           | depth in metres                         | Apache-2.0                        |
 | Real-ESRGAN x4plus                       | super-resolution                        | BSD-3-Clause                      |
@@ -214,6 +220,54 @@ Inpainting is evaluated by moving the object's mask to an object-free area of th
 | Intrinsic Harmonization                  | relighting (`intrinsic`, `reshade`)     | academic use only                 |
 | IC-Light + Realistic Vision 5.1 (SD 1.5) | diffusion relighting (`iclight`)        | Apache-2.0, CreativeML OpenRAIL-M |
 | MediaPipe Pose + Hand Landmarker         | the body and hand skeletons             | Apache-2.0                        |
+
+## Module 2 on the Muzeul Olteniei collection
+
+The dissertation advisor provided the photo database of the **Muzeul Olteniei Craiova**'s GAME project (the Oltenia Museum, Craiova, Romania): 20,906 photographs (Samsung Galaxy S24 Ultra, 3000×4000 px, ~75 GB) in 124 series of **84 objects** – pottery, idols, axes, spearheads, swords, bracelets, casting moulds, a marble bust. Every object was photographed all around on a turntable: a white cylinder on a white backdrop, or a black disc with spiral grooves in the laboratory. The photographs were not picked by hand: an automatic pipeline analysed all of them, kept **8,744 good photographs of the 83 usable objects** and harmonized them into the museum halls, like the Met objects. This repository carries five photographs of each object and their harmonizations (`python_research/data/museum_oltenia/showcase.csv` lists them), plus every object's contact sheet; all 8,744 and their harmonizations are on the author's laptop.
+
+### Automatic selection
+
+1. **Detection by text:** YOLOE (an open-vocabulary detector) looks for the object by the series' name ("vase", "spearhead", "bracelet"…) and by a few general names ("ancient artifact", "pottery", "figurine", "metal object"), besides the turntable and people ("person", "hand", "foot", "shoe"). YOLOv8 (COCO classes) did not fit: it saw the turntables as clocks or toilets and missed the metal objects.
+2. **The mask:** SAM 2.1 cuts the object out of the detected box. SAM is then asked what lies just under the mask's base, and that region (the turntable the object stands on) is taken out of the mask.
+3. **The rules**, in order (the folder's photographs, with the number each rule rejected):
+
+| Rule                                                                                                      |    Photos |
+| --------------------------------------------------------------------------------------------------------- | --------: |
+| object cut by the photo's edge                                                                            |     2,389 |
+| no object found                                                                                           |     1,742 |
+| copy from the same burst (the sharpest is kept)                                                           |     1,515 |
+| blurred (variance of the Laplacian under 0.35 of the series' median)                                      |     1,417 |
+| white cylinder cut out instead of the object (over 60% white pixels, for an object that is not white)     |     1,104 |
+| a person, a hand or a foot in the photo                                                                   |     1,128 |
+| object too small (its longest side under 15% of the photo)                                                |     1,003 |
+| black disc in the mask (the mask's bottom much darker than the rest)                                      |       652 |
+| white cylinder in the mask (the mask's bottom much whiter than the rest)                                  |       386 |
+| turntable's top in the mask (the mask over 1.55 times as wide as usual in the series)                     |       336 |
+| same view as the previous kept photo (the masks overlap by 98.5%)                                         |       312 |
+| other rules (the turntable widens the vessel's base, the mask leaves the box, more turntable than object) |       178 |
+| **kept**                                                                                                  | **8,744** |
+
+The rules were tuned on review sheets (photos with the mask drawn, green = kept, red = rejected with the reason); the figure `python_research/data/museum_oltenia/figures/selection_reasons.jpg` shows examples of each reason. In a random sample of 60 kept photos, 57 have a correct mask; in the others the outline is only imperfect. The very small objects (rings, the fibula, some bracelets) came out worst: at the analysis' resolution (750×1000) the detector finds the cylinder more easily than the ring on it, so the silver hair ring has no photo kept, the bronze ring one and the fibula four.
+
+4. **Copying:** the kept photographs are in `photos/museum_oltenia/<object>/<object>_<NNN>_<white|lab>.jpg` (longest side 1600 px, the rule of `photos/CREDITS.md`), named in English after the object (for example "I8276 ulcior" → `jug_I8276`, "Idol caine 7522" → `idol_dog_I7522`) and the backdrop (`white` – the white cylinder, `lab` – the laboratory). The masks are in `python_research/data/museum_oltenia/masks/` (in this repository, those of the showcase photos), and `photos.csv` gives each one's original file.
+
+### Real sizes
+
+The museum's tables give the height of only a few objects, two of them in the photographs: the cup I 56404 (9.7 cm) and the bowl I 56651 (8.5 cm). For the others **the turntable is the ruler**: the ratio of the object to the turntable's width in the same photo (the height for vessels seen from the side, the length for flat objects seen from above), the median over all suitable photos. The white cylinder, calibrated on the cup I 56404, is 14.8 cm; the black disc, from the objects photographed on both, ~22.5 cm. An independent check: the pot "18298" (probably I 8298 of the table, 9.3 cm) comes out at 9.5 cm. The estimate was possible for **46 objects** (2.5 to 25 cm); for the others the turntable is never whole in the photos. The results are in `python_research/data/museum_oltenia/objects.csv`, marked as estimates.
+
+### Harmonization
+
+`harmonize_collection.py` takes every photograph through Module 2's steps: the matted cut-out from its mask, the ensemble harmonization, the camera match, a faint reflection and the contact shadow in the floor's perspective. The halls take turns (Kielce, The Met, Nelson-Atkins, Norton Simon), each with free spots of floor in front of its exhibits. The objects are 3–25 cm tall, so at their real size on the floor of a hall photographed from a few metres they would be a few dozen pixels high: they are shown as display pieces, ~30% of the photo's height. The results are in `python_research/data/museum_oltenia/harmonized/<object>/`, and one contact sheet per object (12 harmonizations) in `data/museum_oltenia/sheets/`. Photos taken from above or from below are placed in the hall the same way, as views of the piece.
+
+| Step                                                        | Command                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Analysing the photos (YOLOE + SAM 2.1; runs from `models/`) | `python ../collection_selection/analyze.py`                                    |
+| Selection (+ review sheets)                                 | `python collection_selection/selection.py sheets 8`                            |
+| Copying into the project, the sizes, the objects' table     | `python collection_selection/import_photos.py`, `sizes.py`, `objects_table.py` |
+| Harmonization (can be stopped and resumed)                  | `python harmonize_collection.py --sheet`                                       |
+| The showcase (five photos of each object)                   | `python collection_selection/showcase.py`                                      |
+
+The analysis, the copying and the selection figure need the original photographs, which are no longer kept (`data/museum_oltenia/analysis/` keeps every photo's measurements, and on the author's laptop also the analysis' masks, so the selection and the sizes can be redone). The museum's tables are in `data/museum_oltenia/` (`museum_object_data_2024-12-17.docx`, `museum_object_text_notes_GAME.xlsx`).
 
 ## Modules 1 + 2 together – museum objects in your hands
 
