@@ -14,7 +14,7 @@ is doing. The webcam is read in Full HD (--resolution): the hands and poses are 
 into the Full HD frame, at the detail of the museum photos.
 
 Keys: H = harmonization on/off (the objects stay, shown raw, to compare), O = objects on/off,
-      N = next object, D = hand landmarks on/off, S = save the frame shown (images/python_app/
+      N = next object, D = hand landmarks on/off, S = save the frame shown (images_python_app/
       objects_<n>.png), Q or Esc = quit (closing the window quits too).
 
 Usage:

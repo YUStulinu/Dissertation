@@ -7,7 +7,7 @@ CC BY / CC BY-SA images must be credited as below.
 
 `open_access/` holds the photographs taken from the internet: the objects from The Met's Open Access
 collection and the halls and the town square from Wikimedia Commons. The author's own portrait,
-`poza_CV.jpg`, stays in `photos/`.
+`poza_CV.jpg`, stays in `photos_module2/`.
 
 | File | What | Author / source | Licence |
 | --- | --- | --- | --- |

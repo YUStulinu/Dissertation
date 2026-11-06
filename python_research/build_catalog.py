@@ -8,7 +8,7 @@ most 1600 px, 2400 px for the largest objects - held close to a Full HD camera t
 ~1800 px tall - and 4000 px for the swords, ~3500 px wide across the palms). The live demo then only
 resizes and composites these cut-outs.
 
-catalog.json gives, per object, the photo (in photos/open_access/), its real height in metres - the one thing
+catalog.json gives, per object, the photo (in photos_module2/open_access/), its real height in metres - the one thing
 the photo cannot tell - and optionally "class": the YOLO (COCO) class to prefer (default "vase";
 another class is used if YOLO finds no vase, and an object YOLO is not sure of at all - a statue,
 a helmet, a mask - is cut out by SAM from the largest of its weak detections), and "box":
@@ -40,7 +40,7 @@ from common.imaging import labeled_grid, read_image, write_image
 from common.paths import IMAGES_DIR
 from common.segmentation import extract_foreground, load_yolo, refine_mask, sam_mask, segment
 
-MAX_HEIGHT = 2400  # px: the tallest cut-out (photos/CREDITS.md) - every pixel of the painting is kept
+MAX_HEIGHT = 2400  # px: the tallest cut-out (photos_module2/CREDITS.md) - every pixel of the painting is kept
 HOLE_SHARE = 0.0005  # holes in the mask smaller than this share of the object are SAM's misses, filled
 CAPTION_H = 44  # px: labeled_grid's caption bar
 MATTING_PX = 1600  # the matting's soft edge is that of a photo this large, also for larger ones: a 4000 px

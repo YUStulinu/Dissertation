@@ -7,7 +7,7 @@ action with per-class probability bars. --pose-only shows just the skeleton.
 
 Usage:
     python verify_pipeline.py [--pose-only] [--model models/action_classifier.onnx]
-Keys: S = save the frame shown (images/python_app/<action>_<n>.png), Q or Esc = quit.
+Keys: S = save the frame shown (images_python_app/<action>_<n>.png), Q or Esc = quit.
 """
 
 import argparse

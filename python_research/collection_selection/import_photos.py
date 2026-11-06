@@ -1,5 +1,5 @@
-"""Copies the selected photos into the project: photos/museum_oltenia/<object>/<object>_<setting>_<NNN>.jpg
-(longest side 1600 px, the rule of photos/CREDITS.md), the object's mask at the same size in
+"""Copies the selected photos into the project: photos_module2/museum_oltenia/<object>/<object>_<setting>_<NNN>.jpg
+(longest side 1600 px, the rule of photos_module2/CREDITS.md), the object's mask at the same size in
 python_research/data/museum_oltenia/masks/<name>.png, and a manifest (CSV) of where each came from.
 Every written photo is read back and checked. The originals are not touched here."""
 import csv
@@ -19,7 +19,7 @@ from selection import load, select  # noqa: E402
 
 PROJECT = Path(r"C:\MASTER\disertatie")
 SOURCE = Path(r"C:\MASTER\Poze pentru disertatie")
-PHOTOS = PROJECT / "photos" / "museum_oltenia"
+PHOTOS = PROJECT / "photos_module2" / "museum_oltenia"
 DATA = PROJECT / "python_research" / "data" / "museum_oltenia"
 LONG_SIDE = 1600
 

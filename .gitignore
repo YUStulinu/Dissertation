@@ -14,5 +14,5 @@ python_research/models/yoloe-11l-seg.pt
 python_research/models/mobileclip_blt.ts
 
 # Recordings of the live demo (python_research/demo.mp4: 250 MB, over GitHub's 100 MB limit per file;
-# its frames are in images/python_app/demo/)
+# its frames are in images_python_app/demo/)
 *.mp4

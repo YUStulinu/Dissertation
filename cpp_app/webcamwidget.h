@@ -37,7 +37,7 @@
 //      photos - onto the very frame the hands were found in, so they never lag behind them.
 //   5. The action, the objects and the frame rates are drawn on the video.
 // Keys: H = harmonization on/off, O = objects on/off, N = next object, D = hand landmarks,
-//       S = save the frame shown (images/qt_cpp_app/objects_<n>.png, or <action>_<n>.png with
+//       S = save the frame shown (images_qt_app/objects_<n>.png, or <action>_<n>.png with
 //       --no-objects), Q / Esc = quit (closing the window quits too).
 // Arguments: --video FILE (a recorded video, played in a loop, instead of the webcam),
 //            --no-objects (Module 1 only).

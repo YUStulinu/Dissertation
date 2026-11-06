@@ -30,7 +30,7 @@ def main() -> None:
             if not done:
                 missing += 1
                 continue
-            rows.append({"object": obj, "label": m["label"], "photo": f"photos/{m['photo']}",
+            rows.append({"object": obj, "label": m["label"], "photo": f"photos_module2/{m['photo']}",
                          "harmonized": done[0].relative_to(ROOT).as_posix()})
     with open(DATA / "showcase.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["object", "label", "photo", "harmonized"])

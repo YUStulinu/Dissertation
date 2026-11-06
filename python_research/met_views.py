@@ -11,7 +11,7 @@ the object keeps its size and place while it turns. The views are at most VIEW_P
 stays at full resolution for the first view); their colours are bled into the transparent pixels (as
 handheld._bleed), so the demo reads them as they are.
 
-Saves photos/open_access/views/<object>_<k>.jpg (the Met's photo k of the object, at most as large as the
+Saves photos_module2/open_access/views/<object>_<k>.jpg (the Met's photo k of the object, at most as large as the
 main photo), data/objects/views/<object>/<n>.png and data/objects/met_views.json ({object: [views]}),
 which load_catalog() reads; --sheet also saves data/objects/met_views_preview.jpg (the photos of each object).
 

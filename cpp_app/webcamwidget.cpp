@@ -396,14 +396,14 @@ void WebcamWidget::display(const cv::Mat& frame)
     imageLabel_->setPixmap(QPixmap::fromImage(std::move(image)));
 }
 
-// The S key: the frame shown, as images/qt_cpp_app/<name>_<n>.png - name = "objects", or with
+// The S key: the frame shown, as images_qt_app/<name>_<n>.png - name = "objects", or with
 // --no-objects the action shown - with n the first free number.
 void WebcamWidget::saveShot()
 {
     if (shown_.empty()) return;
     const QString name = objectRenderer_ ? QStringLiteral("objects")
                        : personVisible_ && !lastLabel_.empty() ? QString::fromStdString(lastLabel_) : QStringLiteral("frame");
-    const QDir dir(root_.filePath("images/qt_cpp_app"));
+    const QDir dir(root_.filePath("images_qt_app"));
     dir.mkpath(".");
     int n = 1;
     while (dir.exists(QString("%1_%2.png").arg(name).arg(n))) ++n;

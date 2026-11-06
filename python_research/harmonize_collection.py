@@ -1,5 +1,5 @@
 """
-Module 2 on the Muzeul Olteniei Craiova collection: every selected photo of photos/museum_oltenia/
+Module 2 on the Muzeul Olteniei Craiova collection: every selected photo of photos_module2/museum_oltenia/
 is cut out and placed in a museum hall with the unified pipeline's steps - matted cut-out from the
 photo's mask (data/museum_oltenia/masks/), ensemble harmonization, camera match, a faint floor
 reflection and a contact shadow - like museum_demo.py does for the Met objects.
@@ -84,7 +84,7 @@ def contact_sheet(obj: str) -> Path | None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Harmonize the Muzeul Olteniei photos into museum halls")
-    parser.add_argument("--object", help="Only this object (its folder name in photos/museum_oltenia)")
+    parser.add_argument("--object", help="Only this object (its folder name in photos_module2/museum_oltenia)")
     parser.add_argument("--sheet", action="store_true", help="Also save a contact sheet per object")
     args = parser.parse_args()
 

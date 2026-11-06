@@ -163,7 +163,7 @@ class Artefact:
 
 
 def catalog_entries() -> list[dict]:
-    """catalog.json: per object the photo (in photos/open_access/) and its real height in metres - or its width,
+    """catalog.json: per object the photo (in photos_module2/open_access/) and its real height in metres - or its width,
     for an object lying lengthwise - and how it is held, if not as usual (see build_catalog.py)."""
     return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
