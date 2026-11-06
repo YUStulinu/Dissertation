@@ -52,7 +52,12 @@ def draw_status(frame: np.ndarray, scene: HandheldScene, action, fps: float, har
     h, w = frame.shape[:2]
     u = h / 480  # sizes are for a 480-row frame
     grey, green, red = (210, 210, 210), (90, 220, 90), (80, 80, 255)
-    lines = [(f"FPS {fps:.0f} | H Harmonization | O Objects | N Next Object | S Save | Q Quit", grey)]
+    keys = f"FPS {fps:.0f} | H Harmonization | O Objects | D Hand Points | N Next Object | S Save | Q Quit"
+    if cv2.getTextSize(keys, cv2.FONT_HERSHEY_SIMPLEX, 0.5 * u, max(1, round(u)))[0][0] + 16 * u > w:  # a narrow frame:
+        lines = [(part, grey) for part in keys.split(" | N Next", 1)]                                  # two rows
+        lines[1] = ("N Next" + lines[1][0], grey)
+    else:
+        lines = [(keys, grey)]
     shown = [t for t in scene.tracks if t.opacity > 0 and t.artefact]
     if not objects:
         lines.append(("Objects Hidden (O Shows Them)", red))

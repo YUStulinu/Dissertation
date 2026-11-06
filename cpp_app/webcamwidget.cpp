@@ -325,9 +325,18 @@ void WebcamWidget::drawOverlay(cv::Mat& frame) const
     const cv::Scalar grey(210, 210, 210), green(90, 220, 90), red(80, 80, 255);
     std::vector<std::pair<std::string, cv::Scalar>> lines;
     char text[200];
-    std::snprintf(text, sizeof(text), "FPS %d | H Harmonization | O Objects | N Next Object | S Save | Q Quit",
+    std::snprintf(text, sizeof(text), "FPS %d | H Harmonization | O Objects | D Hand Points | N Next Object | S Save | Q Quit",
                   static_cast<int>(videoRate_.perSecond() + 0.5));
-    lines.emplace_back(text, grey);
+    const std::string keys = text;
+    int baseline = 0;
+    if (cv::getTextSize(keys, cv::FONT_HERSHEY_SIMPLEX, 0.5 * u, std::max(1, static_cast<int>(std::lround(u))), &baseline).width
+            + 16 * u > frame.cols) {  // a narrow frame: the keys on two rows (as draw_status in ar_objects.py)
+        const size_t cut = keys.find(" | N Next");
+        lines.emplace_back(keys.substr(0, cut), grey);
+        lines.emplace_back(keys.substr(cut + 3), grey);
+    } else {
+        lines.emplace_back(keys, grey);
+    }
     const bool allHarmonized = std::all_of(objects_.begin(), objects_.end(), [](const HeldObject& o) { return !o.raw; });
     if (!showObjects_)
         lines.emplace_back("Objects Hidden (O Shows Them)", red);
