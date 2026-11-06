@@ -49,6 +49,9 @@ The scene works in the image the hands were found in - live, a 540-row copy of t
 camera frame - and the objects are drawn into the camera frame itself, at its scale (layers,
 render and describe take that scale), from cut-outs at their photos' full resolution (up to 2400 px tall;
 a sword, lying, ~3600 px long).
+The Muzeul Olteniei objects (collection_selection/live_views.py, data/objects/oltenia.json) were
+photographed all around on a turntable: each turns slowly in the hand, back and forth through
+up to 12 views of one turn (VIEW_S per view), read from disk in a thread when the object comes up.
   occlusion      the hands stay in front of an object held at its belly or handles
   shadow         a soft contact shadow on the palm under an object standing on it
 """
@@ -57,7 +60,9 @@ import contextlib
 import json
 import os
 import queue
+import threading
 import time
+from collections import OrderedDict
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -98,6 +103,9 @@ WEIGHT = np.arange(256, dtype=np.float32) * np.float32(1 / 255)  # alpha (uint8)
 REST = 1 - WEIGHT
 THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")  # math libraries' thread pools
 ENSEMBLE = ("harmonizer", "pctnet", "pctnet_cnn")
+COLLECTION_PATH = CATALOG_DIR / "oltenia.json"  # the Muzeul Olteniei objects (collection_selection/live_views.py)
+VIEW_S = 0.25                      # an object photographed all around: seconds per view as it turns
+VIEW_KEEP = 240                    # views kept in memory (~20 objects' worth, ~1 MB each)
 
 
 # ── Object library ────────────────────────────────────────────────────────
@@ -114,6 +122,9 @@ class Artefact:
     size_m: float | None = None                # the size shown: the catalog's (a sword lying lengthwise: its length)
     lengthwise: bool = False                   # lies lengthwise (catalog "width_m"): carried on the palms, never
                                                # held at its sides
+    views: tuple[str, ...] = ()                # catalog "views": cut-outs of it turned (data/objects/<view>.png,
+                                               # colours bled already), shown in turn; the first is `sprite`
+    approx_size: bool = False                  # catalog "approx_size": not measured, the typical size of its kind
     belly: float = field(init=False)           # widest row of the lower body (fraction of the height from the top)
     belly_width_m: float = field(init=False)   # its real width there: open hands hold it at its sides there
     handles: float | None = field(init=False)  # where a grip holds it (fraction of the height from the top)
@@ -155,21 +166,28 @@ def catalog_entries() -> list[dict]:
     return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
 
+def collection_entries() -> list[dict]:
+    """oltenia.json: the Muzeul Olteniei objects - name, height, size shown and views (live_views.py)."""
+    return json.loads(COLLECTION_PATH.read_text(encoding="utf-8")) if COLLECTION_PATH.exists() else []
+
+
 def sprite_path(entry: dict) -> Path:
-    return CATALOG_DIR / f"{Path(entry['photo']).stem}.png"
+    return CATALOG_DIR / f"{entry.get('name') or Path(entry['photo']).stem}.png"
 
 
-def load_catalog() -> list[Artefact]:
-    """The objects of catalog.json that have a cut-out, smallest first. One given by its width ("width_m":
-    a sword lying lengthwise) gets the height that width makes in its cut-out."""
+def load_catalog(collection: bool = True) -> list[Artefact]:
+    """The objects of catalog.json (and, with collection, of oltenia.json) that have a cut-out, smallest
+    first. One given by its width ("width_m": a sword lying lengthwise) gets the height that width makes
+    in its cut-out."""
     arts = []
-    for e in catalog_entries():
+    for e in catalog_entries() + (collection_entries() if collection else []):
         path = sprite_path(e)
         if path.exists():
             sprite = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
             height = e["height_m"] if "height_m" in e else e["width_m"] * sprite.shape[0] / sprite.shape[1]
-            arts.append(Artefact(path.stem, height, sprite, e.get("handles"), e.get("hands"), e.get("height_m", e.get("width_m")),
-                                 "height_m" not in e))
+            arts.append(Artefact(path.stem, height, sprite, e.get("handles"), e.get("hands"),
+                                 e.get("size_m", e.get("height_m", e.get("width_m"))), "height_m" not in e,
+                                 tuple(e.get("views", ())), bool(e.get("approx_size"))))
     if not arts:
         raise FileNotFoundError(f"No object cut-outs in {CATALOG_DIR}: run python build_catalog.py first.")
     return sorted(arts, key=lambda a: a.height_m)
@@ -338,11 +356,51 @@ class Layer:
     y: int
     mode: str                           # "palm" (stands on it), "sides" (held at its belly) or "handles"
     scale: float = 1.0                  # image size / size of the image the hands were found in
+    key: str = ""                       # the cut-out shown: the object's name, or the view of it turning now
+    texture: np.ndarray | None = None   # that cut-out, colours bled (default: the object's own)
+
+    def __post_init__(self):
+        if self.texture is None:
+            self.key, self.texture = self.track.artefact.name, self.track.artefact.texture
 
     @property
     def bgra(self) -> np.ndarray:
         """The cut-out at the layer's size as uint8 BGRA: what the harmonization worker composites."""
-        return _resized(self.track.artefact.texture, self.w, self.h)
+        return _resized(self.texture, self.w, self.h)
+
+
+class _Views:
+    """The turning objects' views: read from disk when their object first needs them - live in a
+    thread, so that no frame waits (until then the object shows its first view), for video files and
+    stills at once, so that every run is the same - and the latest VIEW_KEEP kept."""
+
+    def __init__(self, sync: bool):
+        self.sync, self.kept, self.asked, self.lock = sync, OrderedDict(), set(), threading.Lock()
+        self.pool = None if sync else ThreadPoolExecutor(2)
+
+    def _read(self, name: str) -> np.ndarray:
+        image = cv2.imread(str(CATALOG_DIR / f"{name}.png"), cv2.IMREAD_UNCHANGED)
+        with self.lock:
+            self.kept[name] = image
+            self.asked.discard(name)
+            while len(self.kept) > VIEW_KEEP:
+                self.kept.popitem(last=False)
+        return image
+
+    def get(self, art: Artefact, name: str) -> np.ndarray | None:
+        with self.lock:
+            image = self.kept.get(name)
+            if image is not None:
+                self.kept.move_to_end(name)
+                return image
+        if self.sync:
+            return self._read(name)
+        with self.lock:  # all the views of that object not read yet, in the background
+            todo = [v for v in art.views[1:] if v not in self.kept and v not in self.asked]
+            self.asked.update(todo)
+        for v in todo:
+            self.pool.submit(self._read, v)
+        return None
 
 
 class HandheldScene:
@@ -356,6 +414,7 @@ class HandheldScene:
         # starts loading the networks now
         self.worker = HarmonyWorker(method, sync, colour_share=colour_share) if method != "none" else None
         self._styled_cache, self._sprites, self._shadows, self._spans, self._next_harmony = {}, {}, {}, {}, 0.0
+        self.views = _Views(sync)
         self._work: dict[str, np.ndarray] = {}  # arrays made every frame, kept (_buffer)
         self._noise, self._noise_version = 0.0, -1  # the camera's grain, measured on the image drawn into
         self._grain = None  # sensor noise covering a Full HD frame: a random window of it every frame
@@ -551,11 +610,25 @@ class HandheldScene:
             else:
                 mode, row, width = "palm", 1.0, 0.0
             fit = float(np.clip(tr.gap_m / width, *FIT_RANGE)) if several and width else 1.0
+            key, texture = self._view(tr)
             h = max(8, round(art.height_m * tr.px_per_m * fit * scale))
-            w = max(1, round(art.sprite.shape[1] * h / art.sprite.shape[0]))
+            w = max(1, round(texture.shape[1] * h / texture.shape[0]))
             x, y = tr.centre[0] * scale - w / 2, tr.centre[1] * scale - row * h  # that row at the hands
-            out.append(Layer(tr, w, h, round(x), round(y), mode, scale))
+            out.append(Layer(tr, w, h, round(x), round(y), mode, scale, key, texture))
         return out
+
+    def _view(self, tr: Track) -> tuple[str, np.ndarray]:
+        """The cut-out a track's object is shown with now: an object photographed all around turns
+        back and forth through its views, VIEW_S each, counted from when it came into the hand (its
+        first view while the others are still being read)."""
+        art = tr.artefact
+        if len(art.views) < 2 or not np.isfinite(tr.changed):
+            return art.name, art.texture
+        n = len(art.views)
+        step = int(max(0.0, self.now - tr.changed) / VIEW_S) % (2 * n - 2)
+        k = step if step < n else 2 * n - 2 - step
+        texture = self.views.get(art, art.views[k]) if k else None
+        return (art.views[k], texture) if texture is not None else (art.name, art.texture)
 
     def refresh_harmony(self, frame: np.ndarray) -> None:
         """Harmonize now instead of at the next periodic update (stills)."""
@@ -573,10 +646,10 @@ class HandheldScene:
         cut-out sharpened at its own resolution."""
         from common.harmonization import _sharpness
 
-        art, (x1, y1, x2, y2) = layer.track.artefact, visible
+        source, (x1, y1, x2, y2) = layer.texture, visible
         version = None if fit is None else self.worker.version
-        if layer.h * SAMPLED_RATIO > art.texture.shape[0]:
-            step = int(np.floor(4 * np.log2(art.texture.shape[0] / layer.h) + 0.5))  # the blur's radius, in 2^(1/4) steps
+        if layer.h * SAMPLED_RATIO > source.shape[0]:
+            step = int(np.floor(4 * np.log2(source.shape[0] / layer.h) + 0.5))  # the blur's radius, in 2^(1/4) steps
             texture = self._styled(layer, fit, version, 2 ** (step / 4))
             sx, sy = layer.w / texture.shape[1], layer.h / texture.shape[0]  # cv2.resize's pixel alignment:
             m = np.array([[1 / sx, 0, (x1 - layer.x + 0.5) / sx - 0.5], [0, 1 / sy, (y1 - layer.y + 0.5) / sy - 0.5]])
@@ -588,14 +661,14 @@ class HandheldScene:
                     cv2.LUT(alpha, WEIGHT, dst=self._buffer("weight", size, np.float32)),
                     cv2.LUT(alpha, REST, dst=self._buffer("rest", size, np.float32)))
         tid, cached = layer.track.id, self._sprites.get(layer.track.id)
-        if cached is None or cached[0] != (art.name, layer.w, layer.h, version):
-            size, most = (layer.h, layer.w), (art.texture.shape[0], max(art.texture.shape[1], layer.w))  # kept per object
+        if cached is None or cached[0] != (layer.key, layer.w, layer.h, version):
+            size, most = (layer.h, layer.w), (source.shape[0], max(source.shape[1], layer.w))  # kept per object
             texture = self._styled(layer, fit, version)
             sized = cv2.resize(texture, size[::-1], dst=self._buffer((tid, "sized"), size + (4,), most=most),
                                interpolation=cv2.INTER_AREA if layer.h < texture.shape[0] else cv2.INTER_LINEAR)
             colours = cv2.cvtColor(sized, cv2.COLOR_BGRA2BGR, dst=self._buffer((tid, "colours"), size + (3,), most=most))
             alpha = cv2.extractChannel(sized, 3, dst=self._buffer((tid, "alpha"), size, most=most))
-            cached = self._sprites[tid] = ((art.name, layer.w, layer.h, version), (
+            cached = self._sprites[tid] = ((layer.key, layer.w, layer.h, version), (
                 colours if fit is None else _sharpness(colours, fit[1]),
                 cv2.LUT(alpha, WEIGHT, dst=self._buffer((tid, "weight"), size, np.float32, most)),
                 cv2.LUT(alpha, REST, dst=self._buffer((tid, "rest"), size, np.float32, most))))
@@ -620,18 +693,18 @@ class HandheldScene:
         resolution, px of its pixels per frame pixel (kept beside it, for one px)."""
         from common.harmonization import _sharpness
 
-        art = layer.track.artefact
+        texture = layer.texture
         if fit is None:
-            return art.texture
+            return texture
         matrix, t = fit  # [rgb, 1] @ matrix in 0-1 units = the 3x4 transform below in 0-255
         cached = self._styled_cache.get(layer.track.id)
-        if cached is None or cached[0] != (art.name, version):
-            bgr = cv2.transform(cv2.cvtColor(art.texture, cv2.COLOR_BGRA2BGR), np.hstack([matrix[:3].T, 255 * matrix[3:].T]))
-            cached = self._styled_cache[layer.track.id] = [(art.name, version), np.dstack([bgr, art.texture[..., 3]]), None, None]
+        if cached is None or cached[0] != (layer.key, version):
+            bgr = cv2.transform(cv2.cvtColor(texture, cv2.COLOR_BGRA2BGR), np.hstack([matrix[:3].T, 255 * matrix[3:].T]))
+            cached = self._styled_cache[layer.track.id] = [(layer.key, version), np.dstack([bgr, texture[..., 3]]), None, None]
         if px is None or 0 <= t <= 0.05:  # the sharpness stays (_sharpness changes nothing there)
             return cached[1]
         if cached[2] != px:
-            cached[2:] = [px, np.dstack([_sharpness(cv2.cvtColor(cached[1], cv2.COLOR_BGRA2BGR), t, px), art.texture[..., 3]])]
+            cached[2:] = [px, np.dstack([_sharpness(cv2.cvtColor(cached[1], cv2.COLOR_BGRA2BGR), t, px), texture[..., 3]])]
         return cached[3]
 
     def _grain_window(self, h: int, w: int) -> np.ndarray:
@@ -682,7 +755,7 @@ class HandheldScene:
         for layer in layers:
             tr, fit = layer.track, results.get(layer.track.id)
             objects.append({
-                "id": tr.id, "name": tr.artefact.name, "w": layer.w, "h": layer.h,
+                "id": tr.id, "name": tr.artefact.name, "sprite": layer.key, "w": layer.w, "h": layer.h,
                 "x": layer.x, "y": layer.y, "mode": layer.mode, "opacity": round(tr.opacity, 3),
                 "raw": not self.harmonized(tr),
                 "fit": None if fit is None else [round(float(v), 5) for v in fit[0].ravel()] + [
@@ -691,7 +764,7 @@ class HandheldScene:
                 "hands": [np.round(h.points * scale, 3).tolist() for h in tr.hands] if layer.mode != "palm" else [],
                 "centres": [np.round(h.centre * scale, 1).tolist() for h in tr.hands],
                 "n_hands": len(tr.hands), "grip": tr.grip, "busy": tr.busy, "height_m": tr.artefact.height_m,
-                "size_m": tr.artefact.size_m, "shadow": _shadowed(layer)})
+                "size_m": tr.artefact.size_m, "approx_size": tr.artefact.approx_size, "shadow": _shadowed(layer)})
         return objects
 
     def render(self, frame: np.ndarray, harmonize: bool = True, small: np.ndarray | None = None,
@@ -747,11 +820,11 @@ class HandheldScene:
 
     def _contact_shadow(self, layer: Layer, strength: float = 0.45) -> tuple[np.ndarray, int, int]:
         """Blurred ellipse under the object's base: (alpha canvas, x, y) in frame coordinates."""
-        sprite = layer.track.artefact.sprite
-        if layer.track.artefact.name not in self._spans:  # the base's width in the cut-out
+        sprite = layer.texture
+        if layer.key not in self._spans:  # the base's width in the cut-out
             base = np.nonzero(sprite[-max(2, sprite.shape[0] // 20):, :, 3].max(0) > 127)[0]
-            self._spans[layer.track.artefact.name] = float(np.ptp(base)) if len(base) else sprite.shape[1] / 2
-        rx = max(3, int(np.floor(0.6 * self._spans[layer.track.artefact.name] * layer.w / sprite.shape[1] + 0.5)))
+            self._spans[layer.key] = float(np.ptp(base)) if len(base) else sprite.shape[1] / 2
+        rx = max(3, int(np.floor(0.6 * self._spans[layer.key] * layer.w / sprite.shape[1] + 0.5)))
         if rx not in self._shadows:
             if len(self._shadows) > 64:
                 self._shadows.clear()

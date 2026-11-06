@@ -62,7 +62,7 @@ def draw_status(frame: np.ndarray, scene: HandheldScene, action, fps: float, har
         lines.append(("Harmonization OFF: Objects Shown Raw, as Photographed in the Museum", red))
     if objects:
         lines += [(f"{len(t.hands)} Hand{'s' * (len(t.hands) > 1)}, {'Grip' if t.grip else 'Open'}: "
-                   f"{t.artefact.name.replace('_', ' ').title()} ({100 * t.artefact.size_m:.0f} cm)"
+                   f"{t.artefact.name.replace('_', ' ').title()} ({'~' * t.artefact.approx_size}{100 * t.artefact.size_m:.0f} cm)"
                    + (f" - {'Harmonized' if harmony and scene.harmonized(t) else 'Raw'}" if t.busy else ""), grey)
                   for t in shown]
     if _BAR.get("key") != (lines, w, h):  # drawn again only when a line changes (mostly the FPS figure)

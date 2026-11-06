@@ -24,7 +24,9 @@
 
 struct HeldObject {
     int         id = 0;
-    std::string name;                   // sprite: python_research/data/objects/<name>.png
+    std::string name;                   // the object (its main cut-out: python_research/data/objects/<name>.png)
+    std::string sprite;                 // the cut-out shown now: <name>, or views/<name>/<k> of an object turning
+                                        // in the hand (the Muzeul Olteniei objects, photographed all around)
     cv::Size    size;                   // in the frame, pixels
     cv::Point   topLeft;
     std::string mode;                   // "palm" (stands on it), "sides" (held at its belly) or "handles"
@@ -43,6 +45,7 @@ struct HeldObject {
     bool        shadow = false;         // a contact shadow under its base (it stands on the palm)
     double      heightM = 0.0;          // real height
     double      sizeM = 0.0;            // the size shown: the catalog's (a sword lying lengthwise: its length)
+    bool        approxSize = false;     // not measured: the typical size of its kind (shown with "~")
 };
 
 class ObjectRenderer {
@@ -85,6 +88,7 @@ private:
     };
     enum Work { DRAWN, ALPHA, COLOURS, WEIGHT, REST, OPAQUE_WEIGHT, OPAQUE_REST, GRAINED, BLURRED, WORK_COUNT };
 
+    static constexpr size_t VIEW_KEEP = 240;      // views of turning objects kept in memory (as handheld.py)
     const cv::Mat* texture(const std::string& name);  // the bled cut-out (8-bit BGRA), nullptr if missing
     const cv::Mat& styled(const HeldObject& object, const cv::Mat& texture, double px);  // px 0: not sharpened
     Part part(const HeldObject& object, const cv::Mat& texture, const cv::Rect& visible, bool harmonized);
@@ -95,6 +99,8 @@ private:
     std::string                                   dir_;
     std::map<std::string, cv::Mat>               textures_;  // per name (empty if missing)
     std::map<std::string, double>                spans_;     // per name: the width of the base, cut-out pixels
+    std::map<std::string, unsigned long long>    viewUse_;   // per view read: the last frame drawing it
+    unsigned long long                            frame_ = 0; // frames drawn
     std::map<int, Styled>                         styled_;    // per object id: its re-coloured cut-out
     std::map<int, Kept>                           sprites_;   // per object id: the whole object at its size
     cv::Mat                                       work_[WORK_COUNT];

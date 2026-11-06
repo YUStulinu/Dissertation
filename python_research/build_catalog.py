@@ -160,7 +160,7 @@ def main() -> None:
         write_image(path, sprite)
         print(f"  {path.name}: {sprite.shape[1]}x{sprite.shape[0]} px, "
               + (f"{entry['height_m']} m tall" if "height_m" in entry else f"{entry['width_m']} m long"))
-    catalog = load_catalog()
+    catalog = load_catalog(collection=False)
     for art in catalog:
         print(f"{art.name:<28} {'one hand ' if art.one_hand else 'two hands'} height {art.height_m:.3f} m, "
               f"belly {art.belly_width_m:.3f} m wide, "

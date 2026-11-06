@@ -339,8 +339,8 @@ void WebcamWidget::drawOverlay(cv::Mat& frame) const
         lines.emplace_back("Harmonization OFF: Objects Shown Raw, as Photographed in the Museum", red);
     if (showObjects_) {
         for (const HeldObject& o : objects_) {
-            std::snprintf(text, sizeof(text), "%d Hand%s, %s: %s (%.0f cm)%s", o.numHands, o.numHands > 1 ? "s" : "",
-                          o.grip ? "Grip" : "Open", ObjectRenderer::displayName(o.name).c_str(), 100.0 * o.sizeM,
+            std::snprintf(text, sizeof(text), "%d Hand%s, %s: %s (%s%.0f cm)%s", o.numHands, o.numHands > 1 ? "s" : "",
+                          o.grip ? "Grip" : "Open", ObjectRenderer::displayName(o.name).c_str(), o.approxSize ? "~" : "", 100.0 * o.sizeM,
                           !o.busy ? "" : harmonize_ && !o.raw ? " - Harmonized" : " - Raw");
             lines.emplace_back(text, grey);
         }

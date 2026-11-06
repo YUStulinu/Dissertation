@@ -97,7 +97,7 @@ class _Version:
 
 
 def main() -> None:
-    catalog = load_catalog()
+    catalog = load_catalog(collection=False)
     scene = HandheldScene(catalog, "none")
     scene.worker = _Version()
     rows = [["vase", "height_px", "detail_before_pct", "detail_now_pct", "ssim_before", "ssim_now"]]

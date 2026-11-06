@@ -193,6 +193,8 @@ std::vector<HeldObject> ObjectRenderer::parse(const QJsonArray& objects)
         o.shadow   = json["shadow"].toBool(o.mode == "palm");
         o.heightM  = json["height_m"].toDouble();
         o.sizeM    = json["size_m"].toDouble(o.heightM);
+        o.sprite   = json["sprite"].toString(QString::fromStdString(o.name)).toStdString();
+        o.approxSize = json["approx_size"].toBool();
         out.push_back(std::move(o));
     }
     return out;
@@ -230,11 +232,22 @@ float ObjectRenderer::cameraNoise(const cv::Mat& frame)
 
 const cv::Mat* ObjectRenderer::texture(const std::string& name)
 {
+    // a turning object's view (views/...) is read when first drawn - its colours are bled already
+    // (live_views.py) - and only the latest VIEW_KEEP are kept, as handheld._Views
+    const bool view = name.rfind("views/", 0) == 0;
     auto it = textures_.find(name);
     if (it == textures_.end()) {
         const cv::Mat sprite = cv::imread(dir_ + "/" + name + ".png", cv::IMREAD_UNCHANGED);
-        it = textures_.emplace(name, sprite.channels() == 4 ? bleed(sprite) : cv::Mat()).first;
+        it = textures_.emplace(name, sprite.channels() != 4 ? cv::Mat() : view ? sprite : bleed(sprite)).first;
+        if (view && viewUse_.size() >= VIEW_KEEP) {  // forget the view drawn longest ago
+            const auto oldest = std::min_element(viewUse_.begin(), viewUse_.end(),
+                                                 [](const auto& a, const auto& b) { return a.second < b.second; });
+            textures_.erase(oldest->first);
+            spans_.erase(oldest->first);
+            viewUse_.erase(oldest);
+        }
     }
+    if (view) viewUse_[name] = frame_;
     return it->second.empty() ? nullptr : &it->second;
 }
 
@@ -253,7 +266,7 @@ const cv::Mat& ObjectRenderer::styled(const HeldObject& object, const cv::Mat& t
         return out;
     };
     Styled& s = styled_[object.id];
-    const std::pair<std::string, int> key{object.name, object.version};
+    const std::pair<std::string, int> key{object.sprite, object.version};
     if (s.bgra.empty() || s.key != key) {
         cv::Mat bgr, coloured;
         cv::cvtColor(texture, bgr, cv::COLOR_BGRA2BGR);
@@ -290,7 +303,7 @@ ObjectRenderer::Part ObjectRenderer::part(const HeldObject& o, const cv::Mat& te
         cv::LUT(alpha, restLut_, p.rest);
         return p;
     }
-    const SizeKey key{o.name, o.size.width, o.size.height, harmonized ? o.version : -1};
+    const SizeKey key{o.sprite, o.size.width, o.size.height, harmonized ? o.version : -1};
     Kept& kept = sprites_[o.id];
     if (kept.colours.empty() || kept.key != key) {
         const cv::Size full(std::max(texture.cols, o.size.width), texture.rows);  // as large as the object can be here
@@ -316,7 +329,7 @@ ObjectRenderer::Part ObjectRenderer::part(const HeldObject& o, const cv::Mat& te
 const cv::Mat& ObjectRenderer::shadow(const HeldObject& o, const cv::Mat& texture, cv::Point& at)
 {
     // a blurred ellipse under the base, as wide as it (mirrors _contact_shadow)
-    auto span = spans_.find(o.name);
+    auto span = spans_.find(o.sprite);
     if (span == spans_.end()) {  // the base's columns in the cut-out
         const int rows = std::max(2, texture.rows / 20);
         int first = -1, last = -1;
@@ -327,7 +340,7 @@ const cv::Mat& ObjectRenderer::shadow(const HeldObject& o, const cv::Mat& textur
                     last = x;
                     break;
                 }
-        span = spans_.emplace(o.name, first >= 0 ? last - first : texture.cols / 2.0).first;
+        span = spans_.emplace(o.sprite, first >= 0 ? last - first : texture.cols / 2.0).first;
     }
     const int rx = std::max(3, static_cast<int>(std::floor(0.6 * span->second * o.size.width / texture.cols + 0.5)));
     auto canvas = shadows_.find(rx);
@@ -364,6 +377,7 @@ void ObjectRenderer::draw(cv::Mat& frame, const std::vector<HeldObject>& objects
     };
     for (auto it = sprites_.begin(); it != sprites_.end();) it = gone(it->first) ? sprites_.erase(it) : std::next(it);
     for (auto it = styled_.begin(); it != styled_.end();) it = gone(it->first) ? styled_.erase(it) : std::next(it);
+    ++frame_;
     if (objects.empty()) return;
     const double soft = std::max(1.0, frame.rows / 480.0);  // the hands' soft edge, as at 480 rows
     const cv::Rect inFrame(0, 0, frame.cols, frame.rows);
@@ -382,7 +396,7 @@ void ObjectRenderer::draw(cv::Mat& frame, const std::vector<HeldObject>& objects
     for (size_t i = 0; i < objects.size(); ++i) {
         const HeldObject& o = objects[i];
         if (o.opacity <= 0.0f || o.size.area() <= 0) continue;
-        const cv::Mat* tex = texture(o.name);
+        const cv::Mat* tex = texture(o.sprite);
         if (!tex) continue;
         const bool harmonized = harmonize && !o.raw && o.hasFit;
         const bool shadowed = o.shadow;  // standing on the palm (not a sword lying across two)

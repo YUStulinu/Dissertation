@@ -85,7 +85,7 @@ def benchmark(shares: list[float]) -> dict:
 def vases(shares: list[float]) -> dict:
     changes = {s: [] for s in shares}
     for scene in SCENES:
-        for art in load_catalog():
+        for art in load_catalog(collection=False):
             composite, _, inside, outputs = vase_scene(scene, art)
             before = lab(composite)[inside]
             chroma = np.hypot(before[:, 1], before[:, 2])
@@ -97,7 +97,7 @@ def vases(shares: list[float]) -> dict:
 
 
 def figure() -> None:
-    catalog, panels = {a.name: a for a in load_catalog()}, []
+    catalog, panels = {a.name: a for a in load_catalog(collection=False)}, []
     for scene, name, title in FIGURE:
         composite, alpha, inside, outputs = vase_scene(scene, catalog[name])
         crop = lambda image: crop_object(image, alpha, margin=0.35)
